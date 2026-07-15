@@ -21,11 +21,12 @@
   var log = Logger('Settings');
 
   var KEY_MAP = Object.freeze({
-    enabled:          C.STORAGE_KEYS.ENABLED,
-    fadeDuration:     C.STORAGE_KEYS.FADE_DURATION,
-    fadeCurve:        C.STORAGE_KEYS.FADE_CURVE,
-    preferredVolume:  C.STORAGE_KEYS.PREFERRED_VOLUME,
-    debug:            C.STORAGE_KEYS.DEBUG,
+    enabled:             C.STORAGE_KEYS.ENABLED,
+    fadeOutDuration:     C.STORAGE_KEYS.FADE_OUT_DURATION,
+    fadeInDuration:      C.STORAGE_KEYS.FADE_IN_DURATION,
+    fadeCurve:           C.STORAGE_KEYS.FADE_CURVE,
+    preferredVolume:     C.STORAGE_KEYS.PREFERRED_VOLUME,
+    debug:               C.STORAGE_KEYS.DEBUG,
   });
 
   var KEY_REVERSE = {};
@@ -84,25 +85,27 @@
     });
   }
 
-  /** @returns {Promise<{enabled: boolean, fadeDuration: number, fadeCurve: string, preferredVolume: number, debug: boolean}>} */
+  /** @returns {Promise<{enabled: boolean, fadeOutDuration: number, fadeInDuration: number, fadeCurve: string, preferredVolume: number, debug: boolean}>} */
   async function getAll() {
     try {
       var raw = await storageGet(null);
       return {
-        enabled:          raw[C.STORAGE_KEYS.ENABLED]       !== undefined ? raw[C.STORAGE_KEYS.ENABLED]       : C.DEFAULTS.ENABLED,
-        fadeDuration:     raw[C.STORAGE_KEYS.FADE_DURATION]  !== undefined ? raw[C.STORAGE_KEYS.FADE_DURATION]  : C.DEFAULTS.FADE_DURATION,
-        fadeCurve:        raw[C.STORAGE_KEYS.FADE_CURVE]     !== undefined ? raw[C.STORAGE_KEYS.FADE_CURVE]     : C.DEFAULTS.FADE_CURVE,
-        preferredVolume:  raw[C.STORAGE_KEYS.PREFERRED_VOLUME] !== undefined ? raw[C.STORAGE_KEYS.PREFERRED_VOLUME] : C.DEFAULTS.PREFERRED_VOLUME,
-        debug:            raw[C.STORAGE_KEYS.DEBUG]          !== undefined ? raw[C.STORAGE_KEYS.DEBUG]          : C.DEFAULTS.DEBUG,
+        enabled:             raw[C.STORAGE_KEYS.ENABLED]            !== undefined ? raw[C.STORAGE_KEYS.ENABLED]            : C.DEFAULTS.ENABLED,
+        fadeOutDuration:     raw[C.STORAGE_KEYS.FADE_OUT_DURATION]  !== undefined ? raw[C.STORAGE_KEYS.FADE_OUT_DURATION]  : C.DEFAULTS.FADE_OUT_DURATION,
+        fadeInDuration:      raw[C.STORAGE_KEYS.FADE_IN_DURATION]   !== undefined ? raw[C.STORAGE_KEYS.FADE_IN_DURATION]   : C.DEFAULTS.FADE_IN_DURATION,
+        fadeCurve:           raw[C.STORAGE_KEYS.FADE_CURVE]         !== undefined ? raw[C.STORAGE_KEYS.FADE_CURVE]         : C.DEFAULTS.FADE_CURVE,
+        preferredVolume:     raw[C.STORAGE_KEYS.PREFERRED_VOLUME]   !== undefined ? raw[C.STORAGE_KEYS.PREFERRED_VOLUME]   : C.DEFAULTS.PREFERRED_VOLUME,
+        debug:               raw[C.STORAGE_KEYS.DEBUG]              !== undefined ? raw[C.STORAGE_KEYS.DEBUG]              : C.DEFAULTS.DEBUG,
       };
     } catch (err) {
       console.error('[SS] getAll error:', err);
       return {
-        enabled:          C.DEFAULTS.ENABLED,
-        fadeDuration:     C.DEFAULTS.FADE_DURATION,
-        fadeCurve:        C.DEFAULTS.FADE_CURVE,
-        preferredVolume:  C.DEFAULTS.PREFERRED_VOLUME,
-        debug:            C.DEFAULTS.DEBUG,
+        enabled:             C.DEFAULTS.ENABLED,
+        fadeOutDuration:     C.DEFAULTS.FADE_OUT_DURATION,
+        fadeInDuration:      C.DEFAULTS.FADE_IN_DURATION,
+        fadeCurve:           C.DEFAULTS.FADE_CURVE,
+        preferredVolume:     C.DEFAULTS.PREFERRED_VOLUME,
+        debug:               C.DEFAULTS.DEBUG,
       };
     }
   }

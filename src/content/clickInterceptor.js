@@ -145,7 +145,7 @@
 
     // 4. Fade out over the configured duration
     var duration = Math.min(
-      this._settings.fadeDuration || 700,
+      this._settings.fadeOutDuration || 700,
       3000 // safety cap
     );
 

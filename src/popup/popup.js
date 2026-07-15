@@ -19,11 +19,13 @@
   // DOM refs
   // ---------------------------------------------------------------------------
 
-  var enabledChk     = document.getElementById('enabled');
-  var durationSlider = document.getElementById('fadeDuration');
-  var durationValue  = document.getElementById('durationValue');
-  var curveSelect    = document.getElementById('fadeCurve');
-  var debugChk       = document.getElementById('debug');
+  var enabledChk       = document.getElementById('enabled');
+  var fadeOutSlider    = document.getElementById('fadeOutDuration');
+  var fadeOutValue     = document.getElementById('fadeOutValue');
+  var fadeInSlider     = document.getElementById('fadeInDuration');
+  var fadeInValue      = document.getElementById('fadeInValue');
+  var curveSelect      = document.getElementById('fadeCurve');
+  var debugChk         = document.getElementById('debug');
   var statusEl       = document.getElementById('status');
   var videoStatusEl  = document.getElementById('videoStatus');
   var volumeDisplay  = document.getElementById('volumeDisplay');
@@ -39,11 +41,13 @@
   (async function init() {
     var settings = await Settings.getAll();
 
-    enabledChk.checked     = settings.enabled;
-    durationSlider.value   = settings.fadeDuration;
-    durationValue.textContent = settings.fadeDuration + ' ms';
-    curveSelect.value      = settings.fadeCurve;
-    debugChk.checked       = settings.debug;
+    enabledChk.checked        = settings.enabled;
+    fadeOutSlider.value       = settings.fadeOutDuration;
+    fadeOutValue.textContent  = settings.fadeOutDuration + ' ms';
+    fadeInSlider.value        = settings.fadeInDuration;
+    fadeInValue.textContent   = settings.fadeInDuration + ' ms';
+    curveSelect.value         = settings.fadeCurve;
+    debugChk.checked          = settings.debug;
 
     requestStatus();
   })();
@@ -57,15 +61,22 @@
     broadcast({ type: 'SETTINGS_UPDATED', payload: { enabled: enabledChk.checked } });
   });
 
-  durationSlider.addEventListener('input', function () {
-    var val = Number(durationSlider.value);
-    durationValue.textContent = val + ' ms';
+  fadeOutSlider.addEventListener('input', function () {
+    fadeOutValue.textContent = Number(fadeOutSlider.value) + ' ms';
+  });
+  fadeOutSlider.addEventListener('change', function () {
+    var val = Number(fadeOutSlider.value);
+    Settings.set({ fadeOutDuration: val });
+    broadcast({ type: 'SETTINGS_UPDATED', payload: { fadeOutDuration: val } });
   });
 
-  durationSlider.addEventListener('change', function () {
-    var val = Number(durationSlider.value);
-    Settings.set({ fadeDuration: val });
-    broadcast({ type: 'SETTINGS_UPDATED', payload: { fadeDuration: val } });
+  fadeInSlider.addEventListener('input', function () {
+    fadeInValue.textContent = Number(fadeInSlider.value) + ' ms';
+  });
+  fadeInSlider.addEventListener('change', function () {
+    var val = Number(fadeInSlider.value);
+    Settings.set({ fadeInDuration: val });
+    broadcast({ type: 'SETTINGS_UPDATED', payload: { fadeInDuration: val } });
   });
 
   curveSelect.addEventListener('change', function () {
@@ -82,11 +93,13 @@
     await Settings.reset();
     var defaults = await Settings.getAll();
 
-    enabledChk.checked     = defaults.enabled;
-    durationSlider.value   = defaults.fadeDuration;
-    durationValue.textContent = defaults.fadeDuration + ' ms';
-    curveSelect.value      = defaults.fadeCurve;
-    debugChk.checked       = defaults.debug;
+    enabledChk.checked        = defaults.enabled;
+    fadeOutSlider.value       = defaults.fadeOutDuration;
+    fadeOutValue.textContent  = defaults.fadeOutDuration + ' ms';
+    fadeInSlider.value        = defaults.fadeInDuration;
+    fadeInValue.textContent   = defaults.fadeInDuration + ' ms';
+    curveSelect.value         = defaults.fadeCurve;
+    debugChk.checked          = defaults.debug;
 
     broadcast({ type: 'SETTINGS_UPDATED', payload: defaults });
     requestStatus();

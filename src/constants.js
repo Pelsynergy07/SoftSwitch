@@ -12,7 +12,8 @@
 
   C.DEFAULTS = Object.freeze({
     ENABLED: true,
-    FADE_DURATION: 700,
+    FADE_OUT_DURATION: 700,
+    FADE_IN_DURATION: 700,
     FADE_CURVE: 'easeInOut',
     PREFERRED_VOLUME: 1,
     DEBUG: false,
@@ -46,7 +47,8 @@
 
   C.STORAGE_KEYS = Object.freeze({
     ENABLED: 'softswitch_enabled',
-    FADE_DURATION: 'softswitch_fadeDuration',
+    FADE_OUT_DURATION: 'softswitch_fadeOutDuration',
+    FADE_IN_DURATION: 'softswitch_fadeInDuration',
     FADE_CURVE: 'softswitch_fadeCurve',
     PREFERRED_VOLUME: 'softswitch_preferredVolume',
     DEBUG: 'softswitch_debug',

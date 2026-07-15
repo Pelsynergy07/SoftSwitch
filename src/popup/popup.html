@@ -25,15 +25,37 @@
 
     <hr />
 
-    <!-- Fade Duration -->
+    <!-- Fade Out Duration -->
     <section class="section">
       <div class="row">
-        <label for="fadeDuration">Fade Duration</label>
-        <span id="durationValue" class="value">700 ms</span>
+        <label for="fadeOutDuration">Fade Out Duration</label>
+        <span id="fadeOutValue" class="value">700 ms</span>
       </div>
       <input
         type="range"
-        id="fadeDuration"
+        id="fadeOutDuration"
+        min="100"
+        max="3000"
+        step="50"
+        value="700"
+      />
+      <div class="range-labels">
+        <span>100 ms</span>
+        <span>3000 ms</span>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- Fade In Duration -->
+    <section class="section">
+      <div class="row">
+        <label for="fadeInDuration">Fade In Duration</label>
+        <span id="fadeInValue" class="value">700 ms</span>
+      </div>
+      <input
+        type="range"
+        id="fadeInDuration"
         min="100"
         max="3000"
         step="50"

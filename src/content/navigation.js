@@ -1,14 +1,21 @@
 /**
- * @fileoverview Detects non-click YouTube navigation and instantly mutes
- * the current video before YouTube destroys it.
+ * @fileoverview Detects non-click YouTube / YT Music navigation and
+ * fades (or mutes) the current video before navigation proceeds.
  *
  * For click-based navigations, see ClickInterceptor.
  *
- * This handles: autoplay, keyboard (Shift+N/P), browser history,
- * and programmatic pushState/replaceState.
+ * Three navigation paths:
  *
- * The mute handler fires BEFORE the original history.pushState
- * so we can set video.volume = 0 while the element still exists.
+ * 1. pushState / replaceState (clicking Up Next on YT Music, autoplay)
+ *    → Fades out current video (capped at 500ms) then calls origPush
+ *    → YouTube's SPA navigation loads the next song
+ *    → DOMObserver detects new video → handleNewVideo fades in
+ *
+ * 2. popstate (browser back/forward)
+ *    → Instant mute (navigation already happened)
+ *
+ * 3. Keyboard (Shift+N/P on YouTube)
+ *    → Instant mute (navigation already in progress)
  *
  * Sets window.SS_NavigationManager.
  */
@@ -26,6 +33,7 @@
     this._videoManager = deps.videoManager;
     this._controller = deps.controller;
     this._settings = deps.settings;
+    this._scheduler = deps.scheduler;
     this._listeners = [];
     this._destroyed = false;
     this._unpatchHistory = null;
@@ -52,7 +60,7 @@
     this._abortController = new AbortController();
     var signal = this._abortController.signal;
 
-    window.addEventListener('popstate', function () { self._onNavigate(); }, { signal: signal });
+    window.addEventListener('popstate', function () { self._onPopState(); }, { signal: signal });
     this._patchHistory();
     document.addEventListener('keydown', function (e) { self._onKeyDown(e); }, { signal: signal });
 
@@ -73,8 +81,8 @@
     log.debug('NavigationManager destroyed');
   };
 
-  /** @private */
-  NavigationManager.prototype._onNavigate = function () {
+  /** @private — popstate fires after navigation, so just mute */
+  NavigationManager.prototype._onPopState = function () {
     if (this._destroyed) return;
     this._muteCurrentVideo();
     this._emit();
@@ -95,7 +103,8 @@
 
   /**
    * Monkey-patch pushState/replaceState.
-   * Runs mute + notify BEFORE the original function.
+   * For pushState (YT Music Up Next, autoplay) we fade out before
+   * allowing the original call, capped at 500ms to avoid sluggishness.
    * @private
    */
   NavigationManager.prototype._patchHistory = function () {
@@ -104,15 +113,17 @@
     var origReplace = history.replaceState.bind(history);
 
     history.pushState = function () {
-      self._muteCurrentVideo();
-      self._emit();
-      origPush.apply(history, arguments);
+      var args = arguments;
+      self._fadeOutAndCall(function () {
+        origPush.apply(history, args);
+      });
     };
 
     history.replaceState = function () {
-      self._muteCurrentVideo();
-      self._emit();
-      origReplace.apply(history, arguments);
+      var args = arguments;
+      self._fadeOutAndCall(function () {
+        origReplace.apply(history, args);
+      });
     };
 
     this._unpatchHistory = function () {
@@ -122,7 +133,44 @@
   };
 
   /**
+   * Fade out the current video, then call the continuation.
+   * Uses the user's fade-out duration but capped at 500ms for
+   * SPA navigation to keep the UI responsive.
+   * @private @param {function} next
+   */
+  NavigationManager.prototype._fadeOutAndCall = function (next) {
+    var self = this;
+    var video = this._videoManager.getVideo();
+    if (!video) { next(); return; }
+
+    try {
+      var vol = this._controller.saveCurrentVolume(video);
+      if (vol > 0) {
+        this._settings.preferredVolume = vol;
+      }
+
+      if (vol < 0.01) { next(); return; }
+
+      var duration = Math.min(this._settings.fadeOutDuration || 700, 500);
+      log.info('Fading out (' + Math.round(vol * 100) + '% → 0 over ' + duration + 'ms)');
+
+      this._scheduler.schedule(function () {
+        return self._controller.fadeOut(video, vol, duration, self._settings.fadeCurve);
+      });
+
+      setTimeout(function () {
+        self._emit();
+        next();
+      }, duration + 50);
+    } catch (err) {
+      log.warn('Fade-out failed', err);
+      next();
+    }
+  };
+
+  /**
    * Mute the current video instantly AND persist the user's volume.
+   * Used for popstate and keyboard where navigation is already in flight.
    * @private
    */
   NavigationManager.prototype._muteCurrentVideo = function () {

@@ -115,6 +115,7 @@
     navigationManager = new NavigationManager({
       videoManager: videoManager,
       controller: controller,
+      scheduler: scheduler,
       settings: settings,
     });
 
@@ -167,7 +168,7 @@
         log.info('Fading in to ' + Math.round(_pendingVolume * 100) + '%');
         scheduler.schedule(function () {
           _pendingFadeIn = false;
-          return controller.fadeIn(existing, _pendingVolume, settings.fadeDuration, settings.fadeCurve);
+          return controller.fadeIn(existing, _pendingVolume, settings.fadeInDuration, settings.fadeCurve);
         });
       } else {
         // First-run capture: if the user's YouTube volume differs from default,
@@ -218,7 +219,7 @@
     if (currentVol < 0.01) {
       if (log) log.info('Volume near zero — fading in');
       scheduler.schedule(function () {
-        return controller.fadeIn(video, targetVol, settings.fadeDuration, settings.fadeCurve);
+        return controller.fadeIn(video, targetVol, settings.fadeInDuration, settings.fadeCurve);
       });
       return;
     }
