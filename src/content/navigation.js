@@ -138,10 +138,9 @@
   };
 
   /**
-   * Start an async fade-out (non-blocking) and save volume to sessionStorage.
-   * The fade runs via RAF in the background; if the element's src changes
-   * mid-fade the volume property still persists. The new page will fade in
-   * via sessionStorage.
+   * Start an async fade-out (non-blocking). Called from patched pushState.
+   * Does NOT overwrite preferredVolume — the ClickInterceptor's preemptive
+   * fade (or _muteCurrentVideo) already set it to the correct original value.
    * @private
    */
   NavigationManager.prototype._fadeOutAsync = function () {
@@ -150,21 +149,14 @@
     if (!video) return;
 
     try {
-      var vol = this._controller.saveCurrentVolume(video);
-      if (vol > 0) {
-        this._settings.preferredVolume = vol;
-      }
-      if (vol < 0.01) return;
-
-      try {
-        sessionStorage.setItem('ss_fadeTarget', String(vol));
-      } catch (e) { /* ignore */ }
+      var currentVol = video.volume;
+      if (currentVol < 0.01) return;
 
       var duration = Math.min(this._settings.fadeOutDuration || 700, 500);
-      log.info('Async fade-out (' + Math.round(vol * 100) + '% → 0 over ' + duration + 'ms)');
+      log.info('Async fade-out (' + Math.round(currentVol * 100) + '% → 0 over ' + duration + 'ms)');
 
       this._scheduler.schedule(function () {
-        return self._controller.fadeOut(video, vol, duration, self._settings.fadeCurve);
+        return self._controller.fadeOut(video, currentVol, duration, self._settings.fadeCurve);
       });
     } catch (err) {
       log.warn('Async fade-out failed', err);

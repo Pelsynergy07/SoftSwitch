@@ -77,6 +77,7 @@
     this._settings = deps.settings;
     this._active = false;
     this._navTimer = null;
+    this._preemptiveTimer = null;
     this._overlay = null;
     this._boundPointerDown = this._onPointerDown.bind(this);
   }
@@ -94,6 +95,7 @@
     window.removeEventListener('pointerdown', this._boundPointerDown, true);
     this._releaseOverlay();
     this._clearNav();
+    this._clearPreemptive();
     this._active = false;
     log.info('Stopped');
   };
@@ -119,57 +121,91 @@
     if (this._overlay && this._overlay.style.pointerEvents === 'auto') return;
 
     var result = this._resolveLink(e);
-    if (!result) return;
+    if (result) {
+      // --- Standard link interception (YouTube + YT Music home) ---
+      var video = this._videoManager.getVideo();
+      if (!video) {
+        log.debug('No video element — not intercepting');
+        return;
+      }
 
-    var video = this._videoManager.getVideo();
-    if (!video) {
-      log.debug('No video element — not intercepting');
+      log.info('INTERCEPTING click on [' + result.href + ']');
+
+      e.stopImmediatePropagation();
+      e.preventDefault();
+
+      this._activateOverlay();
+
+      var fromVol = this._controller.saveCurrentVolume(video);
+      if (fromVol > 0) {
+        this._settings.preferredVolume = fromVol;
+      }
+
+      var duration = Math.min(
+        this._settings.fadeOutDuration || 700,
+        3000
+      );
+
+      log.info('Fading ' + Math.round(fromVol * 100) + '% → 0 over ' + duration + 'ms');
+
+      this._controller.fadeOut(video, fromVol, duration, this._settings.fadeCurve);
+
+      try {
+        sessionStorage.setItem('ss_fadeTarget', String(fromVol));
+      } catch (e) { /* sessionStorage may be unavailable */ }
+
+      this._clearNav();
+      this._clearPreemptive();
+
+      var self = this;
+      this._navTimer = setTimeout(function () {
+        self._navTimer = null;
+        self._releaseOverlay();
+        log.info('Navigating to [' + result.href + ']');
+        window.location.href = result.link.href;
+      }, duration + 50);
       return;
     }
 
-    log.info('INTERCEPTING click on [' + result.href + ']');
+    // --- YT Music programmatic navigation (Up Next items, etc.) ---
+    // These clicks don't use <a> tags — they fire JS click handlers on custom
+    // elements like <ytmusic-player-queue-item>. We can't block the event or
+    // get a target URL, but we CAN start a preemptive async fade-out so the
+    // volume is already decreasing when YT Music processes the navigation.
+    if (this._isYTMusicNavClick(e)) {
+      var video = this._videoManager.getVideo();
+      if (!video) return;
 
-    // 1. Stop propagation immediately — our handler runs first (document_start)
-    //    so this prevents all other handlers from seeing this event.
-    e.stopImmediatePropagation();
-    e.preventDefault();
+      log.info('Preemptive fade for YT Music navigation');
 
-    // 2. Activate overlay — physical barrier blocks all SUBSEQUENT events
-    this._activateOverlay();
+      var fromVol = this._controller.saveCurrentVolume(video);
+      if (fromVol > 0) {
+        this._settings.preferredVolume = fromVol;
+      }
 
-    // 3. Save current volume
-    var fromVol = this._controller.saveCurrentVolume(video);
-    if (fromVol > 0) {
-      this._settings.preferredVolume = fromVol;
+      try {
+        sessionStorage.setItem('ss_fadeTarget', String(fromVol));
+      } catch (e) { /* ignore */ }
+
+      var duration = Math.min(
+        this._settings.fadeOutDuration || 700,
+        500
+      );
+
+      this._controller.fadeOut(video, fromVol, duration, this._settings.fadeCurve);
+
+      // Safety: if no navigation follows within 2s, restore volume
+      var self = this;
+      var navUrl = window.location.href;
+      this._clearPreemptive();
+      this._preemptiveTimer = setTimeout(function () {
+        self._preemptiveTimer = null;
+        if (window.location.href === navUrl && video) {
+          log.info('No navigation followed — restoring volume');
+          self._controller.setVolume(video, self._settings.preferredVolume);
+        }
+      }, 2000);
     }
-
-    // 4. Fade out over the configured duration
-    var duration = Math.min(
-      this._settings.fadeOutDuration || 700,
-      3000 // safety cap
-    );
-
-    log.info(
-      'Fading ' + Math.round(fromVol * 100) + '% → 0 over ' + duration + 'ms'
-    );
-
-    this._controller.fadeOut(video, fromVol, duration, this._settings.fadeCurve);
-
-    // 5. Store volume in sessionStorage so the new page knows to fade in
-    try {
-      sessionStorage.setItem('ss_fadeTarget', String(fromVol));
-    } catch (e) { /* sessionStorage may be unavailable */ }
-
-    // 6. Safety timeout — release overlay + navigate even if something stalls
-    this._clearNav();
-
-    var self = this;
-    this._navTimer = setTimeout(function () {
-      self._navTimer = null;
-      self._releaseOverlay();
-      log.info('Navigating to [' + result.href + ']');
-      window.location.href = result.link.href;
-    }, duration + 50); // +50ms buffer for RAF to finish
   };
 
   // ---------------------------------------------------------------------------
@@ -187,6 +223,14 @@
   ClickInterceptor.prototype._releaseOverlay = function () {
     if (this._overlay) {
       this._overlay.style.pointerEvents = 'none';
+    }
+  };
+
+  /** @private */
+  ClickInterceptor.prototype._clearPreemptive = function () {
+    if (this._preemptiveTimer !== null) {
+      clearTimeout(this._preemptiveTimer);
+      this._preemptiveTimer = null;
     }
   };
 
@@ -231,6 +275,37 @@
     if (link.getAttribute('target') === '_blank') return null;
 
     return { link: link, href: href };
+  };
+
+  /**
+   * Check if the pointerdown is on a YT Music custom element that initiates
+   * programmatic navigation (e.g. Up Next queue items, playlist items).
+   *
+   * These elements don't use <a> tags — clicks are handled by JS handlers
+   * that call history.pushState directly.
+   *
+   * @private @param {Event} e
+   * @returns {boolean}
+   */
+  ClickInterceptor.prototype._isYTMusicNavClick = function (e) {
+    var isMusic = window.location.hostname.indexOf('music.youtube.com') !== -1;
+    if (!isMusic) return false;
+
+    var path = e.composedPath ? e.composedPath() : [];
+
+    for (var i = 0; i < path.length; i++) {
+      var el = path[i];
+      if (!el || !el.tagName) continue;
+      var tag = el.tagName.toLowerCase();
+
+      // Known YT Music navigation container elements
+      if (tag === 'ytmusic-player-queue-item') return true;
+      if (tag === 'ytmusic-responsive-list-item-renderer') return true;
+      if (tag === 'ytmusic-shelf-renderer') return true;
+      if (tag === 'ytmusic-playlist-shelf-renderer') return true;
+    }
+
+    return false;
   };
 
   /**
