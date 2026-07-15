@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "SoftSwitch",
+  "version": "1.0.0",
+  "description": "Smooth audio transitions between YouTube videos — fade out the old, fade in the new.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://music.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://music.youtube.com/*"
+      ],
+      "js": [
+        "src/utils/logger.js",
+        "src/utils/easing.js",
+        "src/constants.js",
+        "src/storage/settings.js",
+        "src/fade/FadeScheduler.js",
+        "src/fade/FadeController.js",
+        "src/content/videoManager.js",
+        "src/content/navigation.js",
+        "src/content/observer.js",
+        "src/content/clickInterceptor.js",
+        "src/content/index.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "SoftSwitch"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

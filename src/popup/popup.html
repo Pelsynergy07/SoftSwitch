@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoftSwitch</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="app" class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <h1>SoftSwitch</h1>
+      <span id="version" class="version"></span>
+    </header>
+
+    <!-- Enable / Disable Toggle -->
+    <section class="section row">
+      <label for="enabled">Extension Enabled</label>
+      <label class="switch">
+        <input type="checkbox" id="enabled" />
+        <span class="slider"></span>
+      </label>
+    </section>
+
+    <hr />
+
+    <!-- Fade Duration -->
+    <section class="section">
+      <div class="row">
+        <label for="fadeDuration">Fade Duration</label>
+        <span id="durationValue" class="value">700 ms</span>
+      </div>
+      <input
+        type="range"
+        id="fadeDuration"
+        min="100"
+        max="3000"
+        step="50"
+        value="700"
+      />
+      <div class="range-labels">
+        <span>100 ms</span>
+        <span>3000 ms</span>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- Fade Curve -->
+    <section class="section">
+      <label for="fadeCurve">Fade Curve</label>
+      <select id="fadeCurve">
+        <option value="linear">Linear</option>
+        <option value="easeIn">Ease In</option>
+        <option value="easeOut">Ease Out</option>
+        <option value="easeInOut" selected>Ease In-Out</option>
+      </select>
+    </section>
+
+    <hr />
+
+    <!-- Debug Mode -->
+    <section class="section row">
+      <label for="debug">Debug Mode</label>
+      <label class="switch">
+        <input type="checkbox" id="debug" />
+        <span class="slider"></span>
+      </label>
+    </section>
+
+    <hr />
+
+    <!-- Status -->
+    <section class="section">
+      <div class="status-row">
+        <span>Status</span>
+        <span id="status" class="status-badge">Waiting for video</span>
+      </div>
+      <div class="status-row">
+        <span>Video</span>
+        <span id="videoStatus" class="status-badge">Not detected</span>
+      </div>
+      <div class="status-row">
+        <span>Volume</span>
+        <span id="volumeDisplay" class="value">--</span>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- Reset -->
+    <section class="section">
+      <button id="reset" class="btn btn-danger">Reset Settings</button>
+    </section>
+  </div>
+
+  <!-- Scripts loaded in dependency order -->
+  <script src="../constants.js"></script>
+  <script src="../utils/logger.js"></script>
+  <script src="../storage/settings.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
