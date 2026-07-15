@@ -110,6 +110,7 @@
     scheduler = new FadeScheduler(controller);
 
     videoManager = new VideoManager();
+    videoManager.startListening();
 
     navigationManager = new NavigationManager({
       videoManager: videoManager,

@@ -1,9 +1,17 @@
 /**
- * @fileoverview Tracks the active <video> element on YouTube.
+ * @fileoverview Tracks the active media element on YouTube / YouTube Music.
  * Sets window.SS_VideoManager.
  *
- * Uses multiple query strategies to find the video element,
- * including Shadow DOM traversal.
+ * Uses multiple strategies to find the element:
+ *   - DOM queries (YouTube-specific selectors, generic video/audio)
+ *   - Shadow DOM traversal (open roots)
+ *   - Capture-phase event listeners on window (catches elements in
+ *     closed Shadow DOMs — YouTube Music)
+ *
+ * The event-listener fallback works by listening for `play`, `playing`,
+ * and `loadedmetadata` events at window capture phase. Even when a
+ * media element is inside a closed Shadow DOM, its events still bubble
+ * to window, and e.target gives us a direct reference.
  */
 (function () {
   'use strict';
@@ -16,11 +24,52 @@
 
   var log = Logger('VideoManager');
 
+  var MEDIA_EVENTS = ['play', 'playing', 'loadedmetadata'];
+
   function VideoManager() {
     this._video = null;
     this._listeners = [];
     this._destroyed = false;
+    this._boundMediaEvent = null;
   }
+
+  /** Start listening for media events on window capture */
+  VideoManager.prototype.startListening = function () {
+    if (this._boundMediaEvent) return;
+    var self = this;
+    this._boundMediaEvent = function (e) {
+      self._onMediaEvent(e);
+    };
+    for (var i = 0; i < MEDIA_EVENTS.length; i++) {
+      window.addEventListener(MEDIA_EVENTS[i], this._boundMediaEvent, true);
+    }
+    log.debug('Media event listener started');
+  };
+
+  /** Stop listening for media events */
+  VideoManager.prototype.stopListening = function () {
+    if (!this._boundMediaEvent) return;
+    for (var i = 0; i < MEDIA_EVENTS.length; i++) {
+      window.removeEventListener(MEDIA_EVENTS[i], this._boundMediaEvent, true);
+    }
+    this._boundMediaEvent = null;
+    log.debug('Media event listener stopped');
+  };
+
+  /**
+   * Capture-phase handler — catches media events from closed Shadow DOMs.
+   * @private @param {Event} e
+   */
+  VideoManager.prototype._onMediaEvent = function (e) {
+    if (this._destroyed) return;
+    var target = e.target;
+    if (!target) return;
+    var tag = target.tagName;
+    if (tag !== 'VIDEO' && tag !== 'AUDIO') return;
+    if (target === this._video) return;
+    log.info('Media element found via event: <' + tag.toLowerCase() + '>');
+    this._setVideo(target);
+  };
 
   /** @param {function} fn */
   VideoManager.prototype.onChange = function (fn) {
@@ -77,6 +126,7 @@
 
   VideoManager.prototype.destroy = function () {
     this._destroyed = true;
+    this.stopListening();
     this._listeners = [];
     this._video = null;
     log.debug('destroyed');
