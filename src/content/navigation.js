@@ -103,8 +103,15 @@
 
   /**
    * Monkey-patch pushState/replaceState.
-   * For pushState (YT Music Up Next, autoplay) we fade out before
-   * allowing the original call, capped at 500ms to avoid sluggishness.
+   *
+   * SPA navigation (YT Music Up Next, autoplay):
+   *   - Save volume to sessionStorage for fade-in on next page
+   *   - Start a non-blocking async fade-out (RAF runs in the background)
+   *   - Call origPush immediately — DO NOT block YT Music's navigation
+   *
+   * We do NOT block because YT Music stops the old audio on click and
+   * waits for pushState to return before loading the next song. Blocking
+   * would create dead silence (no old audio, no new yet).
    * @private
    */
   NavigationManager.prototype._patchHistory = function () {
@@ -113,17 +120,15 @@
     var origReplace = history.replaceState.bind(history);
 
     history.pushState = function () {
-      var args = arguments;
-      self._fadeOutAndCall(function () {
-        origPush.apply(history, args);
-      });
+      self._fadeOutAsync();
+      self._emit();
+      origPush.apply(history, arguments);
     };
 
     history.replaceState = function () {
-      var args = arguments;
-      self._fadeOutAndCall(function () {
-        origReplace.apply(history, args);
-      });
+      self._fadeOutAsync();
+      self._emit();
+      origReplace.apply(history, arguments);
     };
 
     this._unpatchHistory = function () {
@@ -133,38 +138,36 @@
   };
 
   /**
-   * Fade out the current video, then call the continuation.
-   * Uses the user's fade-out duration but capped at 500ms for
-   * SPA navigation to keep the UI responsive.
-   * @private @param {function} next
+   * Start an async fade-out (non-blocking) and save volume to sessionStorage.
+   * The fade runs via RAF in the background; if the element's src changes
+   * mid-fade the volume property still persists. The new page will fade in
+   * via sessionStorage.
+   * @private
    */
-  NavigationManager.prototype._fadeOutAndCall = function (next) {
+  NavigationManager.prototype._fadeOutAsync = function () {
     var self = this;
     var video = this._videoManager.getVideo();
-    if (!video) { next(); return; }
+    if (!video) return;
 
     try {
       var vol = this._controller.saveCurrentVolume(video);
       if (vol > 0) {
         this._settings.preferredVolume = vol;
       }
+      if (vol < 0.01) return;
 
-      if (vol < 0.01) { next(); return; }
+      try {
+        sessionStorage.setItem('ss_fadeTarget', String(vol));
+      } catch (e) { /* ignore */ }
 
       var duration = Math.min(this._settings.fadeOutDuration || 700, 500);
-      log.info('Fading out (' + Math.round(vol * 100) + '% → 0 over ' + duration + 'ms)');
+      log.info('Async fade-out (' + Math.round(vol * 100) + '% → 0 over ' + duration + 'ms)');
 
       this._scheduler.schedule(function () {
         return self._controller.fadeOut(video, vol, duration, self._settings.fadeCurve);
       });
-
-      setTimeout(function () {
-        self._emit();
-        next();
-      }, duration + 50);
     } catch (err) {
-      log.warn('Fade-out failed', err);
-      next();
+      log.warn('Async fade-out failed', err);
     }
   };
 
