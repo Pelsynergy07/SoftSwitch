@@ -129,16 +129,21 @@
 
     log.info('INTERCEPTING click on [' + result.href + ']');
 
-    // 1. Activate overlay — YouTube receives NOTHING from this point onward
+    // 1. Stop propagation immediately — our handler runs first (document_start)
+    //    so this prevents all other handlers from seeing this event.
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    // 2. Activate overlay — physical barrier blocks all SUBSEQUENT events
     this._activateOverlay();
 
-    // 2. Save current volume
+    // 3. Save current volume
     var fromVol = this._controller.saveCurrentVolume(video);
     if (fromVol > 0) {
       this._settings.preferredVolume = fromVol;
     }
 
-    // 3. Fade out over the configured duration
+    // 4. Fade out over the configured duration
     var duration = Math.min(
       this._settings.fadeDuration || 700,
       3000 // safety cap
@@ -150,12 +155,12 @@
 
     this._controller.fadeOut(video, fromVol, duration, this._settings.fadeCurve);
 
-    // 4. Store volume in sessionStorage so the new page knows to fade in
+    // 5. Store volume in sessionStorage so the new page knows to fade in
     try {
       sessionStorage.setItem('ss_fadeTarget', String(fromVol));
     } catch (e) { /* sessionStorage may be unavailable */ }
 
-    // 5. Safety timeout — release overlay + navigate even if something stalls
+    // 6. Safety timeout — release overlay + navigate even if something stalls
     this._clearNav();
 
     var self = this;
@@ -199,11 +204,24 @@
 
   /**
    * Check if the event target is a video link.
+   *
+   * Uses `composedPath()` instead of `closest('a')` because YouTube Music's
+   * Up Next list uses custom elements whose <a> tags are inside closed Shadow
+   * DOMs. `closest()` cannot cross closed Shadow DOM boundaries, but
+   * `composedPath()` reveals the full event path including those elements.
+   *
    * @private @param {Event} e
    * @returns {{ link: HTMLAnchorElement, href: string }|null}
    */
   ClickInterceptor.prototype._resolveLink = function (e) {
-    var link = e.target.closest('a');
+    var path = e.composedPath ? e.composedPath() : [];
+    var link = null;
+    for (var i = 0; i < path.length; i++) {
+      if (path[i].tagName === 'A') {
+        link = path[i];
+        break;
+      }
+    }
     if (!link) return null;
 
     var href = link.getAttribute('href');
