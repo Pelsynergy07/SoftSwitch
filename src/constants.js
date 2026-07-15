@@ -27,7 +27,7 @@
   C.READY_STATE_THRESHOLD = 3;
 
   C.VIDEO_RETRY_INTERVAL = 500;
-  C.VIDEO_RETRY_MAX_ATTEMPTS = 10;
+  C.VIDEO_RETRY_MAX_ATTEMPTS = 20;
 
   C.OBSERVER_CONFIG = Object.freeze({
     childList: true,
@@ -56,6 +56,7 @@
     VIDEO: 'video.video-stream.html5-main-video',
     APP: 'ytd-app',
     MUSIC_APP: 'ytmusic-app',
+    AUDIO: 'video, audio',
   });
 
   window.SS_CONST = C;

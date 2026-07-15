@@ -83,24 +83,28 @@
   };
 
   /**
-   * Find the active video element using multiple strategies.
-   * @private @returns {HTMLVideoElement|null}
+   * Find the active video or audio element using multiple strategies.
+   * @private @returns {HTMLMediaElement|null}
    */
   VideoManager.prototype._queryVideo = function () {
-    // Strategy 1: YouTube-specific class selector
+    // Strategy 1: YouTube-specific class selector (falls back to generic)
     var el = document.querySelector(C.YT_SELECTORS.VIDEO);
     if (el && el.tagName === 'VIDEO') return el;
 
-    // Strategy 2: Any <video> in the document (YouTube typically has one main video)
-    el = document.querySelector('video');
+    // Strategy 2: Any <video> or <audio> in the document
+    el = document.querySelector(C.YT_SELECTORS.AUDIO);
     if (el) return el;
 
-    // Strategy 3: Look inside common YouTube containers
-    el = document.querySelector('#movie_player video, #player-container video, .html5-video-player video');
+    // Strategy 3: Look inside common YouTube/YT Music containers
+    el = document.querySelector(
+      '#movie_player video, #player-container video, ' +
+      '.html5-video-player video, ' +
+      '#player-bar audio, #player audio'
+    );
     if (el) return el;
 
-    // Strategy 4: Look inside Shadow DOMs
-    el = this._queryShadowDom('video');
+    // Strategy 4: Look inside Shadow DOMs (both video and audio)
+    el = this._queryShadowDom(C.YT_SELECTORS.AUDIO);
     if (el) return el;
 
     return null;

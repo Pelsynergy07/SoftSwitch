@@ -21,7 +21,7 @@
   });
 
   /**
-   * @param {HTMLVideoElement} video
+   * @param {HTMLMediaElement} video
    * @param {number} fromVolume
    * @param {number} toVolume
    * @param {number} duration
@@ -62,13 +62,13 @@
     });
   };
 
-  /** @param {HTMLVideoElement} video @param {number} fromVolume @param {number} duration @param {string} [curve] */
+  /** @param {HTMLMediaElement} video @param {number} fromVolume @param {number} duration @param {string} [curve] */
   FadeController.prototype.fadeOut = function (video, fromVolume, duration, curve) {
     if (curve === undefined) curve = 'easeInOut';
     return this.fade(video, fromVolume, 0, duration, curve);
   };
 
-  /** @param {HTMLVideoElement} video @param {number} toVolume @param {number} duration @param {string} [curve] */
+  /** @param {HTMLMediaElement} video @param {number} toVolume @param {number} duration @param {string} [curve] */
   FadeController.prototype.fadeIn = function (video, toVolume, duration, curve) {
     if (curve === undefined) curve = 'easeInOut';
     return this.fade(video, 0, toVolume, duration, curve);
@@ -79,23 +79,23 @@
     this._active = false;
   };
 
-  /** @param {HTMLVideoElement} video @param {number} value */
+  /** @param {HTMLMediaElement} video @param {number} value */
   FadeController.prototype.setVolume = function (video, value) {
     this._safeSetVolume(video, value);
   };
 
   /** @param {HTMLVideoElement} video @param {number} volume */
-  /** @param {HTMLVideoElement} video @returns {number} */
+  /** @param {HTMLMediaElement} video @returns {number} */
   FadeController.prototype.getVolume = function (video) {
     try { return video.volume; } catch (e) { return 0; }
   };
 
-  /** @param {HTMLVideoElement} video @returns {number} */
+  /** @param {HTMLMediaElement} video @returns {number} */
   FadeController.prototype.saveCurrentVolume = function (video) {
     return this.getVolume(video);
   };
 
-  /** @private @param {HTMLVideoElement} video @param {number} value */
+  /** @private @param {HTMLMediaElement} video @param {number} value */
   FadeController.prototype._safeSetVolume = function (video, value) {
     try {
       var clamped = Math.min(1, Math.max(0, value));
